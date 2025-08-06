@@ -300,7 +300,8 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
   backdrop-filter: blur(8px);
   margin: 16px 0 !important;
-  min-height: 80px; /* Ensure minimum height for header */
+  min-height: 100px; /* Increased minimum height for header */
+  padding-top: 50px; /* Add padding to push content below header */
 }
 
 .markdown-pre::before {
@@ -309,30 +310,30 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  height: 44px; /* Increased header height */
+  height: 48px; /* Slightly increased header height */
   background: linear-gradient(135deg, #2d2d30 0%, #1e1e1e 100%);
   border-radius: 12px 12px 0 0;
   border-bottom: 1px solid var(--code-border);
-  z-index: 1;
+  z-index: 2; /* Increased z-index to stay above content */
 }
 
 .markdown-pre::after {
   content: '';
   position: absolute;
-  top: 16px; /* Centered in the taller header */
+  top: 18px; /* Centered in the header */
   left: 16px;
   width: 12px;
   height: 12px;
   border-radius: 50%;
   background: #ff5f57;
   box-shadow: 20px 0 0 #ffbd2e, 40px 0 0 #28ca42;
-  z-index: 2;
+  z-index: 3; /* Above header background */
 }
 
 .code-content {
   background: transparent !important;
   margin: 0 !important;
-  padding: 60px 20px 20px 20px !important; /* Increased top padding to 60px */
+  padding: 20px 20px 20px 20px !important; /* Removed excessive top padding */
   font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', 'Consolas', 'Courier New', monospace !important;
   font-size: 14px !important;
   line-height: 1.6 !important;
@@ -344,7 +345,7 @@ body {
   width: 100%;
   display: block;
   position: relative;
-  z-index: 0; /* Below header */
+  z-index: 1; /* Below header */
 }
 
 .code-text {
