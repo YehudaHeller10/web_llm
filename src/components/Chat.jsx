@@ -5,6 +5,7 @@ import DOMPurify from "dompurify";
 import BotIcon from "./icons/BotIcon";
 import BrainIcon from "./icons/BrainIcon";
 import UserIcon from "./icons/UserIcon";
+import CodeBlock from "./CodeBlock";
 
 import { MathJaxContext, MathJax } from "better-react-mathjax";
 import "./Chat.css";
@@ -21,6 +22,107 @@ function render(text) {
     }),
   );
   return result;
+}
+
+function renderWithCodeBlocks(text) {
+  // Split text by code blocks and process them separately
+  const codeBlockRegex = /```(\w+)?\n?([\s\S]*?)```/g;
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = codeBlockRegex.exec(text)) !== null) {
+    // Add text before code block
+    if (match.index > lastIndex) {
+      const beforeText = text.slice(lastIndex, match.index);
+      if (beforeText.trim()) {
+        // Remove any code block syntax that might remain
+        const cleanText = beforeText.replace(/```[\w]*\n?/g, '').replace(/```/g, '');
+        if (cleanText.trim()) {
+          parts.push({
+            type: 'text',
+            content: render(cleanText)
+          });
+        }
+      }
+    }
+
+    // Add code block
+    parts.push({
+      type: 'code',
+      language: match[1] || '',
+      content: match[2].trim()
+    });
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    const remainingText = text.slice(lastIndex);
+    if (remainingText.trim()) {
+      // Remove any code block syntax that might remain
+      const cleanText = remainingText.replace(/```[\w]*\n?/g, '').replace(/```/g, '');
+      if (cleanText.trim()) {
+        parts.push({
+          type: 'text',
+          content: render(cleanText)
+        });
+      }
+    }
+  }
+
+  // If no code blocks found, just render as markdown
+  if (parts.length === 0) {
+    parts.push({
+      type: 'text',
+      content: render(text)
+    });
+  }
+
+  return parts;
+}
+
+// New function to handle streaming content with real-time code block detection
+function renderStreamingContent(text) {
+  // Check for incomplete code blocks during streaming
+  const incompleteCodeBlockRegex = /```(\w+)?\n?([\s\S]*?)$/;
+  const completeCodeBlockRegex = /```(\w+)?\n?([\s\S]*?)```/g;
+
+  // First process complete code blocks
+  const parts = renderWithCodeBlocks(text);
+
+  // Check if there's an incomplete code block at the end
+  const hasIncompleteCodeBlock = text.match(/```[\w]*\n?[\s\S]*$/) && !text.match(/```[\w]*\n?[\s\S]*?```$/);
+
+  if (hasIncompleteCodeBlock) {
+    // Find the start of the incomplete code block
+    const lastCompleteCodeEnd = text.lastIndexOf('```\n') !== -1 ? text.lastIndexOf('```\n') + 4 : 0;
+    const incompleteStart = text.lastIndexOf('```', text.length - 1);
+
+    if (incompleteStart > lastCompleteCodeEnd) {
+      // Remove the incomplete code block from regular processing
+      const textBeforeIncomplete = text.slice(0, incompleteStart);
+      const incompleteMatch = text.slice(incompleteStart).match(/```(\w+)?\n?([\s\S]*)/);
+
+      if (incompleteMatch) {
+        // Process text before incomplete code block
+        const beforeParts = textBeforeIncomplete ? renderWithCodeBlocks(textBeforeIncomplete) : [];
+
+        // Add incomplete code block as a streaming code block
+        return [
+          ...beforeParts,
+          {
+            type: 'streaming-code',
+            language: incompleteMatch[1] || '',
+            content: incompleteMatch[2] || ''
+          }
+        ];
+      }
+    }
+  }
+
+  return parts;
 }
 
 function Message({ role, content, answerIndex }) {
@@ -64,12 +166,20 @@ function Message({ role, content, answerIndex }) {
                       {showThinking && (
                         <div className="border-t border-slate-600/50 mt-2 pt-4 px-4 pb-4">
                           <MathJax dynamic>
-                            <div
-                              className="markdown text-gray-300 prose prose-invert max-w-none"
-                              dangerouslySetInnerHTML={{
-                                __html: render(thinking),
-                              }}
-                            />
+                            <div className="markdown text-gray-300 prose prose-invert max-w-none">
+                              {renderWithCodeBlocks(thinking).map((part, index) => (
+                                <div key={index}>
+                                  {part.type === 'code' ? (
+                                    <CodeBlock
+                                      code={part.content}
+                                      language={part.language}
+                                    />
+                                  ) : (
+                                    <div dangerouslySetInnerHTML={{ __html: part.content }} />
+                                  )}
+                                </div>
+                              ))}
+                            </div>
                           </MathJax>
                         </div>
                       )}
@@ -77,12 +187,26 @@ function Message({ role, content, answerIndex }) {
                   )}
                   {doneThinking && (
                     <MathJax dynamic>
-                      <div
-                        className="markdown text-white prose prose-invert max-w-none"
-                        dangerouslySetInnerHTML={{
-                          __html: render(answer),
-                        }}
-                      />
+                      <div className="markdown text-white prose prose-invert max-w-none">
+                        {renderStreamingContent(answer).map((part, index) => (
+                          <div key={index}>
+                            {part.type === 'code' ? (
+                              <CodeBlock
+                                code={part.content}
+                                language={part.language}
+                              />
+                            ) : part.type === 'streaming-code' ? (
+                              <CodeBlock
+                                code={part.content}
+                                language={part.language}
+                                isStreaming={true}
+                              />
+                            ) : (
+                              <div dangerouslySetInnerHTML={{ __html: part.content }} />
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </MathJax>
                   )}
                 </>
