@@ -157,7 +157,7 @@ function Message({ role, content, answerIndex }) {
                           className={`h-5 w-5 text-purple-400 ${doneThinking ? "" : "animate-pulse"}`}
                         />
                         <span className="text-white font-medium">
-                          {doneThinking ? "View reasoning process" : "Analyzing..."}
+                          {doneThinking ? "View reasoning process" : "thinking..."}
                         </span>
                         <span className="ml-auto text-blue-400 text-lg">
                           {showThinking ? "▲" : "▼"}
